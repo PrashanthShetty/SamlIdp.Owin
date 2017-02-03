@@ -294,7 +294,7 @@
             var request = new Saml2AuthenticationRequest(
                 extractedMessage.Data,
                 extractedMessage.RelayState);
-
+            var serviceProvider = ValidateAndGetServiceProvider(request.Issuer);
             var authorizeRequest = new AuthorizationRequest
             {
                 InResponseTo = request.Id,
@@ -338,6 +338,17 @@
         {
             var relative = request.PathBase + path;
             return new Uri(new Uri(request.Uri.GetLeftPart(UriPartial.Authority)), relative.Value);
+        }
+        
+        private ServiceProvider ValidateAndGetServiceProvider(EntityId serviceProviderEntityId)
+        {
+            var serviceProvider = Options.ServiceProviders?.FirstOrDefault(sp => sp.EntityId.Id == serviceProviderEntityId.Id);
+            if (Options.ValidateServiceProvider && serviceProvider == null)
+            {
+                var message = Options.ServiceProviderValidationMessage != null ? Options.ServiceProviderValidationMessage(serviceProviderEntityId.Id) : $"Service Provider is not registred. Invalid Service Provider: {request.Issuer.Id}.";
+                throw new SecurityException(message);
+            }
+            return serviceProvider;
         }
     }
 }
